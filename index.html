@@ -87,6 +87,18 @@
       background-color: #f1a14d;
       cursor: default;
     }
+    .hapus-btn {
+      background-color: #cc3300;
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .hapus-btn:hover {
+      background-color: #ff4d4d;
+    }
     @media print {
       body * {
         visibility: hidden;
@@ -152,6 +164,7 @@
           <th>Terlambat (mnt)</th>
           <th>Tonase</th>
           <th>Keterangan</th>
+          <th>Aksi</th> <!-- Kolom untuk tombol hapus -->
         </tr>
       </thead>
       <tbody></tbody>
@@ -220,8 +233,10 @@
       const end = start + rowsPerPage;
       const pagedData = filteredData.slice(start, end);
 
-      for (const item of pagedData) {
+      pagedData.forEach((item, index) => {
         const row = document.createElement('tr');
+        // index tabel sesuai index di filteredData, perlu dihitung global index
+        const globalIndex = laporanData.indexOf(item);
         row.innerHTML = `
           <td>${item.tanggal}</td>
           <td>${item.hari}</td>
@@ -233,9 +248,10 @@
           <td>${item.terlambat_menit}</td>
           <td>${item.tonase}</td>
           <td>${item.keterangan}</td>
+          <td><button class="hapus-btn" onclick="hapusData(${globalIndex})">Hapus</button></td>
         `;
         tbody.appendChild(row);
-      }
+      });
 
       buatPagination(filteredData.length);
     }
@@ -259,6 +275,19 @@
           tampilkanData();
         });
         pagination.appendChild(btn);
+      }
+    }
+
+    function hapusData(index) {
+      if (confirm('Yakin ingin menghapus data ini?')) {
+        laporanData.splice(index, 1);
+        // Jika halaman kosong setelah hapus, pindah ke halaman sebelumnya jika ada
+        const totalPages = Math.ceil(laporanData.length / rowsPerPage);
+        if (currentPage > totalPages) {
+          currentPage = totalPages;
+        }
+        if (currentPage < 1) currentPage = 1;
+        tampilkanData();
       }
     }
 
