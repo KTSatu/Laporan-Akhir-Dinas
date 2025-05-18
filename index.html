@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Laporan Akhir Dinas Masinis</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      justify-content: center;
+      background: #f0f4f8;
+      color: #003366;
+    }
+    .container {
+      width: 75%;
+      max-width: 900px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 48, 87, 0.3);
+    }
+    h2, h3 {
+      color: #bf5700; /* warna oranye KAI */
+      text-shadow: 1px 1px 1px #003366; /* sedikit bayangan biru */
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #f1a14d; /* oranye terang */
+      padding: 8px;
+      text-align: left;
+      color: #003366;
+    }
+    th {
+      background-color: #003366; /* biru tua */
+      color: white;
+    }
+    input, select {
+      padding: 5px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #bf5700; /* oranye */
+      border-radius: 4px;
+      color: #003366;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+      color: #003366;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+      background-color: #bf5700; /* oranye KAI */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px rgba(191, 87, 0, 0.5);
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #e87c00; /* oranye lebih cerah */
+    }
+    .pagination {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .pagination button {
+      padding: 5px 10px;
+      margin: 0 3px;
+      border: 1px solid #f1a14d;
+      background-color: white;
+      color: #bf5700;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pagination button:disabled {
+      background-color: #f1a14d;
+      cursor: default;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #tabelLaporan, #tabelLaporan * {
+        visibility: visible;
+      }
+      #tabelLaporan {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Laporan Akhir Dinas Masinis</h2>
+
+    <form id="formData">
+      <label>Nomor KA:<input type="text" id="nomorKA" required /></label>
+      <label>Nama Masinis:<input type="text" id="namaMasinis" required /></label>
+      <label>Nama Asisten Masinis:<input type="text" id="namaAsisten" required /></label>
+      <label>Nomor Lokomotif:<input type="text" id="nomorLokomotif" required /></label>
+      <label>Jam Datang (HH:MM):<input type="time" id="jamDatang" required /></label>
+      <label>Terlambat (menit):<input type="number" id="terlambat" min="0" value="0" required /></label>
+      <label>Tonase:<input type="number" id="tonase" min="0" required /></label>
+      <label>Keterangan:<input type="text" id="keterangan" /></label>
+      <button type="submit">Tambah Data</button>
+    </form>
+
+    <hr />
+
+    <h3>Filter Data</h3>
+    <label>Filter Tanggal:<input type="date" id="filterTanggal" /></label>
+    <label>Filter Hari:
+      <select id="filterHari">
+        <option value="">--Semua Hari--</option>
+        <option>Senin</option>
+        <option>Selasa</option>
+        <option>Rabu</option>
+        <option>Kamis</option>
+        <option>Jumat</option>
+        <option>Sabtu</option>
+        <option>Minggu</option>
+      </select>
+    </label>
+    <button onclick="tampilkanData()">Tampilkan Filter</button>
+    <button onclick="downloadCSV()">Download CSV</button>
+    <button onclick="cetakPDF()">Cetak PDF</button>
+
+    <table id="tabelLaporan">
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Hari</th>
+          <th>Nomor KA</th>
+          <th>Nama Masinis</th>
+          <th>Nama Asisten</th>
+          <th>No Lokomotif</th>
+          <th>Jam Datang</th>
+          <th>Terlambat (mnt)</th>
+          <th>Tonase</th>
+          <th>Keterangan</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <script>
+    let laporanData = [];
+    let currentPage = 1;
+    const rowsPerPage = 10;
+
+    function namaHari(dateString) {
+      const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const date = new Date(dateString);
+      return hariIndonesia[date.getDay()];
+    }
+
+    document.getElementById('formData').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const tanggal = `${yyyy}-${mm}-${dd}`;
+      const hari = namaHari(tanggal);
+
+      const data = {
+        tanggal: tanggal,
+        hari: hari,
+        nomor_KA: document.getElementById('nomorKA').value.trim(),
+        nama_masinis: document.getElementById('namaMasinis').value.trim(),
+        nama_asisten: document.getElementById('namaAsisten').value.trim(),
+        nomor_lokomotif: document.getElementById('nomorLokomotif').value.trim(),
+        jam_datang: document.getElementById('jamDatang').value,
+        terlambat_menit: parseInt(document.getElementById('terlambat').value, 10),
+        tonase: parseInt(document.getElementById('tonase').value, 10),
+        keterangan: document.getElementById('keterangan').value.trim()
+      };
+
+      laporanData.push(data);
+      this.reset();
+      currentPage = Math.ceil(laporanData.length / rowsPerPage);
+      tampilkanData();
+    });
+
+    function tampilkanData() {
+      const tbody = document.querySelector('#tabelLaporan tbody');
+      tbody.innerHTML = '';
+
+      const filterTanggal = document.getElementById('filterTanggal').value;
+      const filterHari = document.getElementById('filterHari').value;
+
+      let filteredData = laporanData;
+
+      if (filterTanggal) {
+        filteredData = filteredData.filter(item => item.tanggal === filterTanggal);
+      }
+      if (filterHari) {
+        filteredData = filteredData.filter(item => item.hari === filterHari);
+      }
+
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pagedData = filteredData.slice(start, end);
+
+      for (const item of pagedData) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.tanggal}</td>
+          <td>${item.hari}</td>
+          <td>${item.nomor_KA}</td>
+          <td>${item.nama_masinis}</td>
+          <td>${item.nama_asisten}</td>
+          <td>${item.nomor_lokomotif}</td>
+          <td>${item.jam_datang}</td>
+          <td>${item.terlambat_menit}</td>
+          <td>${item.tonase}</td>
+          <td>${item.keterangan}</td>
+        `;
+        tbody.appendChild(row);
+      }
+
+      buatPagination(filteredData.length);
+    }
+
+    function buatPagination(totalData) {
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = '';
+
+      const totalPages = Math.ceil(totalData / rowsPerPage);
+
+      if(totalPages <= 1) return;
+
+      for(let i=1; i <= totalPages; i++){
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if(i === currentPage){
+          btn.disabled = true;
+        }
+        btn.addEventListener('click', () => {
+          currentPage = i;
+          tampilkanData();
+        });
+        pagination.appendChild(btn);
+      }
+    }
+
+    function downloadCSV() {
+      const filterTanggal = document.getElementById('filterTanggal').value;
+      const filterHari = document.getElementById('filterHari').value;
+      let filteredData = laporanData;
+      if (filterTanggal) filteredData = filteredData.filter(item => item.tanggal === filterTanggal);
+      if (filterHari) filteredData = filteredData.filter(item => item.hari === filterHari);
+
+      const csvRows = [];
+      const headers = ['Tanggal', 'Hari', 'Nomor KA', 'Nama Masinis', 'Nama Asisten', 'Nomor Lokomotif', 'Jam Datang', 'Terlambat (mnt)', 'Tonase', 'Keterangan'];
+      csvRows.push(headers.join(','));
+
+      for (const row of filteredData) {
+        const values = [
+          row.tanggal,
+          row.hari,
+          `"${row.nomor_KA}"`,
+          `"${row.nama_masinis}"`,
+          `"${row.nama_asisten}"`,
+          `"${row.nomor_lokomotif}"`,
+          row.jam_datang,
+          row.terlambat_menit,
+          row.tonase,
+          `"${row.keterangan}"`
+        ];
+        csvRows.push(values.join(','));
+      }
+
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], {type: 'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'laporan_akhir_dinas.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function cetakPDF() {
+      window.print();
+    }
+
+    // Tampilkan data awal tanpa filter
+    tampilkanData();
+  </script>
+</body>
+</html>
