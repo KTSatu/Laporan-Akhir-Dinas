@@ -5,7 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Laporan Akhir Dinas Masinis</title>
   <style>
-    /* Style sama seperti sebelumnya, atau kamu bisa pakai yang sudah ada */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      justify-content: center;
+      background: #f0f4f8;
+      color: #003366;
+    }
+    .container {
+      width: 75%;
+      max-width: 900px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 48, 87, 0.3);
+    }
+    h2, h3 {
+      color: #bf5700;
+      text-shadow: 1px 1px 1px #003366;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #f1a14d;
+      padding: 8px;
+      text-align: left;
+      color: #003366;
+    }
+    th {
+      background-color: #003366;
+      color: white;
+    }
+    input, select {
+      padding: 5px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #bf5700;
+      border-radius: 4px;
+      color: #003366;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+      color: #003366;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+      background-color: #bf5700;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px rgba(191, 87, 0, 0.5);
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #e87c00;
+    }
+    .pagination {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .pagination button {
+      padding: 5px 10px;
+      margin: 0 3px;
+      border: 1px solid #f1a14d;
+      background-color: white;
+      color: #bf5700;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pagination button:disabled {
+      background-color: #f1a14d;
+      cursor: default;
+    }
+    .hapus-btn {
+      background-color: #cc3300;
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .hapus-btn:hover {
+      background-color: #ff4d4d;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #tabelLaporan, #tabelLaporan * {
+        visibility: visible;
+      }
+      #tabelLaporan {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -16,6 +122,7 @@
       <label>Nomor KA:<input type="text" id="nomorKA" required /></label>
       <label>Nama Masinis:<input type="text" id="namaMasinis" required /></label>
       <label>Nama Asisten Masinis:<input type="text" id="namaAsisten" required /></label>
+      <label>UPT CREW KA:<input type="text" id="uptCrewKA" required /></label>
       <label>Nomor Lokomotif:<input type="text" id="nomorLokomotif" required /></label>
       <label>Jam Datang (HH:MM):<input type="time" id="jamDatang" required /></label>
       <label>Terlambat (menit):<input type="number" id="terlambat" min="0" value="0" required /></label>
@@ -53,6 +160,7 @@
           <th>Nomor KA</th>
           <th>Nama Masinis</th>
           <th>Nama Asisten</th>
+          <th>UPT CREW KA</th>
           <th>No Lokomotif</th>
           <th>Jam Datang</th>
           <th>Terlambat (mnt)</th>
@@ -67,84 +175,18 @@
     <div class="pagination" id="pagination"></div>
   </div>
 
-  <script type="module">
-    // Import Firebase modul dari CDN
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      getDocs,
-      deleteDoc,
-      doc
-    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
-    // Konfigurasi Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyBNvdB4bf4OXXqt9l7A_Xs6VzdPZp5pSTc",
-      authDomain: "awal-dinas.firebaseapp.com",
-      projectId: "awal-dinas",
-      storageBucket: "awal-dinas.appspot.com",
-      messagingSenderId: "520284327000",
-      appId: "1:520284327000:web:14ce61a60480384f5a4e2d",
-      measurementId: "G-GFZ4FHRHVQ"
-    };
-
-    // Inisialisasi Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // Data laporan, awalnya kosong, nanti diisi dari Firestore
-    let laporanData = [];
+  <script>
+    let laporanData = JSON.parse(localStorage.getItem('laporanData')) || [];
     let currentPage = 1;
     const rowsPerPage = 10;
 
-    // Fungsi untuk dapatkan nama hari dalam bahasa Indonesia
     function namaHari(dateString) {
       const hariIndonesia = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const date = new Date(dateString);
       return hariIndonesia[date.getDay()];
     }
 
-    // Fungsi ambil data dari Firestore
-    async function ambilDataFirestore() {
-      laporanData = [];
-      const querySnapshot = await getDocs(collection(db, "laporanDinas"));
-      querySnapshot.forEach((doc) => {
-        laporanData.push({
-          id: doc.id, // simpan id dokumen untuk hapus nanti
-          ...doc.data()
-        });
-      });
-      tampilkanData();
-    }
-
-    // Fungsi simpan data ke Firestore
-    async function simpanKeFirestore(data) {
-      try {
-        const docRef = await addDoc(collection(db, "laporanDinas"), data);
-        console.log("Data berhasil disimpan dengan ID:", docRef.id);
-        data.id = docRef.id; // tambah id dokumen ke data lokal
-        laporanData.push(data);
-        tampilkanData();
-      } catch (error) {
-        alert("Gagal menyimpan ke Firebase: " + error.message);
-      }
-    }
-
-    // Fungsi hapus data dari Firestore
-    async function hapusDariFirestore(id) {
-      try {
-        await deleteDoc(doc(db, "laporanDinas", id));
-        laporanData = laporanData.filter(item => item.id !== id);
-        tampilkanData();
-      } catch (error) {
-        alert("Gagal menghapus data dari Firebase: " + error.message);
-      }
-    }
-
-    // Form submit event
-    document.getElementById('formData').addEventListener('submit', async function(e) {
+    document.getElementById('formData').addEventListener('submit', function(e) {
       e.preventDefault();
 
       const today = new Date();
@@ -160,6 +202,7 @@
         nomor_KA: document.getElementById('nomorKA').value.trim(),
         nama_masinis: document.getElementById('namaMasinis').value.trim(),
         nama_asisten: document.getElementById('namaAsisten').value.trim(),
+        upt_crew_ka: document.getElementById('uptCrewKA').value.trim(),
         nomor_lokomotif: document.getElementById('nomorLokomotif').value.trim(),
         jam_datang: document.getElementById('jamDatang').value,
         terlambat_menit: parseInt(document.getElementById('terlambat').value, 10),
@@ -167,15 +210,13 @@
         keterangan: document.getElementById('keterangan').value.trim()
       };
 
-      // Simpan ke Firestore dan update tabel
-      await simpanKeFirestore(data);
-
+      laporanData.push(data);
+      localStorage.setItem('laporanData', JSON.stringify(laporanData));
       this.reset();
       currentPage = Math.ceil(laporanData.length / rowsPerPage);
       tampilkanData();
     });
 
-    // Fungsi tampilkan data di tabel dengan paging dan filter
     function tampilkanData() {
       const tbody = document.querySelector('#tabelLaporan tbody');
       tbody.innerHTML = '';
@@ -194,31 +235,34 @@
 
       pagedData.forEach((item) => {
         const row = document.createElement('tr');
+        const globalIndex = laporanData.indexOf(item);
         row.innerHTML = `
           <td>${item.tanggal}</td>
           <td>${item.hari}</td>
           <td>${item.nomor_KA}</td>
           <td>${item.nama_masinis}</td>
           <td>${item.nama_asisten}</td>
+          <td>${item.upt_crew_ka || ''}</td>
           <td>${item.nomor_lokomotif}</td>
           <td>${item.jam_datang}</td>
           <td>${item.terlambat_menit}</td>
           <td>${item.tonase}</td>
           <td>${item.keterangan}</td>
-          <td><button class="hapus-btn" onclick="hapusData('${item.id}')">Hapus</button></td>
+          <td><button class="hapus-btn" onclick="hapusData(${globalIndex})">Hapus</button></td>
         `;
         tbody.appendChild(row);
       });
 
+      localStorage.setItem('laporanData', JSON.stringify(laporanData));
       buatPagination(filteredData.length);
     }
 
-    // Fungsi buat pagination
     function buatPagination(totalData) {
       const pagination = document.getElementById('pagination');
       pagination.innerHTML = '';
       const totalPages = Math.ceil(totalData / rowsPerPage);
-      if (totalPages <= 1) return;
+
+      if(totalPages <= 1) return;
 
       for (let i = 1; i <= totalPages; i++) {
         const btn = document.createElement('button');
@@ -232,70 +276,66 @@
       }
     }
 
-    // Fungsi hapus data baik lokal dan firestore
-    function hapusData(id) {
+    function hapusData(index) {
       if (confirm('Yakin ingin menghapus data ini?')) {
-        hapusDariFirestore(id);
-      }
-    }
-
-    // Fungsi reset data: kamu bisa buat hapus semua Firestore atau hanya reset lokal
-    // Karena hapus semua data Firestore butuh looping dan berhati-hati,
-    // Untuk sementara ini reset hanya reset data lokal dan reload Firestore
-    function resetData() {
-      if (confirm('Yakin ingin menghapus semua data lokal?')) {
-        laporanData = [];
+        laporanData.splice(index, 1);
+        localStorage.setItem('laporanData', JSON.stringify(laporanData));
+        if (currentPage > Math.ceil(laporanData.length / rowsPerPage)) {
+          currentPage--;
+          if (currentPage < 1) currentPage = 1;
+        }
         tampilkanData();
-        alert("Data lokal sudah dihapus. Untuk hapus data Firestore, perlu implementasi khusus.");
       }
     }
 
-    // Fungsi download CSV sama seperti sebelumnya
+    function resetData() {
+      if (confirm('Yakin ingin menghapus semua data?')) {
+        laporanData = [];
+        localStorage.removeItem('laporanData');
+        currentPage = 1;
+        tampilkanData();
+      }
+    }
+
     function downloadCSV() {
-      const filterTanggal = document.getElementById('filterTanggal').value;
-      const filterHari = document.getElementById('filterHari').value;
-      let filteredData = laporanData;
-      if (filterTanggal) filteredData = filteredData.filter(item => item.tanggal === filterTanggal);
-      if (filterHari) filteredData = filteredData.filter(item => item.hari === filterHari);
+      let csv = '';
+      const headers = ['Tanggal', 'Hari', 'Nomor KA', 'Nama Masinis', 'Nama Asisten', 'UPT CREW KA', 'Nomor Lokomotif', 'Jam Datang', 'Terlambat (mnt)', 'Tonase', 'Keterangan'];
+      csv += headers.join(',') + '\n';
 
-      const csvRows = [];
-      const headers = ['Tanggal', 'Hari', 'Nomor KA', 'Nama Masinis', 'Nama Asisten', 'Nomor Lokomotif', 'Jam Datang', 'Terlambat (mnt)', 'Tonase', 'Keterangan'];
-      csvRows.push(headers.join(','));
-
-      for (const row of filteredData) {
+      laporanData.forEach(row => {
         const values = [
           row.tanggal,
           row.hari,
           `"${row.nomor_KA}"`,
           `"${row.nama_masinis}"`,
           `"${row.nama_asisten}"`,
+          `"${row.upt_crew_ka || ''}"`,
           `"${row.nomor_lokomotif}"`,
           row.jam_datang,
           row.terlambat_menit,
           row.tonase,
           `"${row.keterangan}"`
         ];
-        csvRows.push(values.join(','));
-      }
+        csv += values.join(',') + '\n';
+      });
 
-      const csvData = csvRows.join('\n');
-      const blob = new Blob([csvData], { type: 'text/csv' });
+      const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
       a.href = url;
       a.download = 'laporan_akhir_dinas.csv';
       a.click();
+
       URL.revokeObjectURL(url);
     }
 
-    // Fungsi cetak PDF bisa pakai library jsPDF, aku buatkan contoh minimal
     function cetakPDF() {
-      alert("Fitur cetak PDF belum diimplementasikan. Bisa pakai jsPDF atau dom-to-pdf.");
+      window.print();
     }
 
-    // Ambil data awal saat halaman dimuat
-    window.onload = ambilDataFirestore;
+    // Tampilkan data saat halaman dimuat
+    tampilkanData();
   </script>
 </body>
 </html>
