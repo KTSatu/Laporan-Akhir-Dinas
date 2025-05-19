@@ -1,10 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Laporan Akhir Dinas Masinis</title>
-
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,8 +23,8 @@
       box-shadow: 0 0 10px rgba(0, 48, 87, 0.3);
     }
     h2, h3 {
-      color: #bf5700; /* warna oranye KAI */
-      text-shadow: 1px 1px 1px #003366; /* sedikit bayangan biru */
+      color: #bf5700;
+      text-shadow: 1px 1px 1px #003366;
     }
     table {
       border-collapse: collapse;
@@ -32,13 +32,13 @@
       margin-top: 20px;
     }
     th, td {
-      border: 1px solid #f1a14d; /* oranye terang */
+      border: 1px solid #f1a14d;
       padding: 8px;
       text-align: left;
       color: #003366;
     }
     th {
-      background-color: #003366; /* biru tua */
+      background-color: #003366;
       color: white;
     }
     input, select {
@@ -46,7 +46,7 @@
       margin: 5px 0;
       width: 100%;
       box-sizing: border-box;
-      border: 1px solid #bf5700; /* oranye */
+      border: 1px solid #bf5700;
       border-radius: 4px;
       color: #003366;
     }
@@ -60,7 +60,7 @@
       padding: 10px 20px;
       margin-top: 10px;
       cursor: pointer;
-      background-color: #bf5700; /* oranye KAI */
+      background-color: #bf5700;
       color: white;
       border: none;
       border-radius: 4px;
@@ -68,7 +68,7 @@
       transition: background-color 0.3s ease;
     }
     button:hover {
-      background-color: #e87c00; /* oranye lebih cerah */
+      background-color: #e87c00;
     }
     .pagination {
       margin-top: 20px;
@@ -129,6 +129,7 @@
       <label>Tonase:<input type="number" id="tonase" min="0" required /></label>
       <label>Keterangan:<input type="text" id="keterangan" /></label>
       <button type="submit">Tambah Data</button>
+      <button type="button" onclick="resetData()">Reset Semua Data</button>
     </form>
 
     <hr />
@@ -164,7 +165,7 @@
           <th>Terlambat (mnt)</th>
           <th>Tonase</th>
           <th>Keterangan</th>
-          <th>Aksi</th> <!-- Kolom untuk tombol hapus -->
+          <th>Aksi</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -174,7 +175,7 @@
   </div>
 
   <script>
-    let laporanData = [];
+    let laporanData = JSON.parse(localStorage.getItem('laporanData')) || [];
     let currentPage = 1;
     const rowsPerPage = 10;
 
@@ -208,6 +209,7 @@
       };
 
       laporanData.push(data);
+      localStorage.setItem('laporanData', JSON.stringify(laporanData));
       this.reset();
       currentPage = Math.ceil(laporanData.length / rowsPerPage);
       tampilkanData();
@@ -222,12 +224,8 @@
 
       let filteredData = laporanData;
 
-      if (filterTanggal) {
-        filteredData = filteredData.filter(item => item.tanggal === filterTanggal);
-      }
-      if (filterHari) {
-        filteredData = filteredData.filter(item => item.hari === filterHari);
-      }
+      if (filterTanggal) filteredData = filteredData.filter(item => item.tanggal === filterTanggal);
+      if (filterHari) filteredData = filteredData.filter(item => item.hari === filterHari);
 
       const start = (currentPage - 1) * rowsPerPage;
       const end = start + rowsPerPage;
@@ -235,7 +233,6 @@
 
       pagedData.forEach((item, index) => {
         const row = document.createElement('tr');
-        // index tabel sesuai index di filteredData, perlu dihitung global index
         const globalIndex = laporanData.indexOf(item);
         row.innerHTML = `
           <td>${item.tanggal}</td>
@@ -253,23 +250,20 @@
         tbody.appendChild(row);
       });
 
+      localStorage.setItem('laporanData', JSON.stringify(laporanData));
       buatPagination(filteredData.length);
     }
 
     function buatPagination(totalData) {
       const pagination = document.getElementById('pagination');
       pagination.innerHTML = '';
-
       const totalPages = Math.ceil(totalData / rowsPerPage);
+      if (totalPages <= 1) return;
 
-      if(totalPages <= 1) return;
-
-      for(let i=1; i <= totalPages; i++){
+      for (let i = 1; i <= totalPages; i++) {
         const btn = document.createElement('button');
         btn.textContent = i;
-        if(i === currentPage){
-          btn.disabled = true;
-        }
+        if (i === currentPage) btn.disabled = true;
         btn.addEventListener('click', () => {
           currentPage = i;
           tampilkanData();
@@ -281,12 +275,18 @@
     function hapusData(index) {
       if (confirm('Yakin ingin menghapus data ini?')) {
         laporanData.splice(index, 1);
-        // Jika halaman kosong setelah hapus, pindah ke halaman sebelumnya jika ada
+        localStorage.setItem('laporanData', JSON.stringify(laporanData));
         const totalPages = Math.ceil(laporanData.length / rowsPerPage);
-        if (currentPage > totalPages) {
-          currentPage = totalPages;
-        }
+        if (currentPage > totalPages) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
+        tampilkanData();
+      }
+    }
+
+    function resetData() {
+      if (confirm('Yakin ingin menghapus semua data?')) {
+        laporanData = [];
+        localStorage.removeItem('laporanData');
         tampilkanData();
       }
     }
@@ -332,8 +332,7 @@
       window.print();
     }
 
-    // Tampilkan data awal tanpa filter
-    tampilkanData();
+    document.addEventListener("DOMContentLoaded", tampilkanData);
   </script>
 </body>
 </html>
